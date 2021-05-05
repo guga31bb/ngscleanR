@@ -1,12 +1,4 @@
 library(tidyverse)
-require(data.table)
-
-# # # types
-# original bdb
-# rushing bdb (to-do)
-# most recent bdb
-# ngs highlights
-# ngs live games (maybe)
 
 nfl_field <- sportyR::geom_football(
   'nfl', 
@@ -17,44 +9,6 @@ nfl_field <- sportyR::geom_football(
 # get team colors and logo for joining 
 colors <- nflfastR::teams_colors_logos %>%
   select(team_name = team_abbr, team_color, team_color2, team_logo_espn)
-
-
-week <- 14
-
-df_ngs <- as.data.frame(fread("data-raw/2018_ARI_2018092311_141.tsv.txt")) %>%
-  as_tibble()
-
-bdb19 <- read_csv(url("https://github.com/nfl-football-ops/Big-Data-Bowl/blob/master/Data/tracking_gameId_2017090700.csv?raw=true"))
-
-bdb20 <- read_csv("data-raw/bdb_2020.csv")
-
-bdb21 <- suppressMessages(readr::read_csv(glue::glue("../nfl-big-data-bowl-2021/input/week{week}.csv")))
-
-
-names(df_bdb)
-names(df_bdb1)
-
-names(df_ngs)
-
-df <- df_bdb1
-df <- df_bdb
-df <- df_ngs
-
-df <- df %>%
-  add_info()
-
-df <- bdb20
-
-df
-
-g <- nflfastR::load_pbp(2017) %>%
-  select(-game_id) %>%
-  dplyr::rename(game_id = old_game_id) %>%
-  mutate(game_id = as.integer(game_id)) %>%
-  select(game_id, play_id, desc, play_type_nfl)
-
-df %>%
-  left_join(g, by = c("game_id", "play_id"))
 
 # creates team_name, defense, and adds some play info from nflfastr
 add_info <- function(df) {
