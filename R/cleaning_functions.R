@@ -10,6 +10,13 @@ nfl_field <- sportyR::geom_football(
 colors <- nflfastR::teams_colors_logos %>%
   select(team_name = team_abbr, team_color, team_color2, team_logo_espn)
 
+wrapper <- function(df) {
+  df %>%
+    add_info() %>%
+    rotate_to_ltr() %>%
+    return()
+}
+
 # creates team_name, defense, and adds some play info from nflfastr
 add_info <- function(df) {
   
@@ -21,6 +28,20 @@ add_info <- function(df) {
   if (!"frame_id" %in% names(df) & "frame" %in% names(df)) {
     df <- df %>%
       dplyr::rename(frame_id = frame)
+  }
+  
+  # NGS highlights have home_team_flag instead of team
+  if (!"team" %in% names(df)) {
+    
+    df <- df %>%
+      mutate(
+        team = case_when(
+          home_team_flag == 1 ~ "home",
+          home_team_flag == 0 ~ "away",
+          is.na(home_team_flag) ~ "football"
+        )
+      )
+    
   }
   
   # 2020 bdb used "orientation" instead of "o"
@@ -80,8 +101,12 @@ add_info <- function(df) {
     dplyr::mutate(game_id = as.integer(game_id))
   
   df %>%
-    # get rid of some of the columns we might join so no join duplicates
-    select(-tidyselect::any_of(c("down", "ydstogo", "qtr", "yardline_100", "yards_gained", "desc"))) %>%
+    # get rid of the columns we're joining so no join duplicates
+    select(-tidyselect::any_of(c(
+      "posteam", "home_team", "away_team", 
+      "down", "ydstogo", "qtr", "yardline_100", "epa",
+      "yards_gained", "air_yards", "desc", "pass", "rush", "play_type_nfl"
+      ))) %>%
     left_join(pbp, by = c("game_id", "play_id")) %>%
     mutate(
       team_name = case_when(
