@@ -6,6 +6,12 @@ nfl_field <- sportyR::geom_football(
   grass_color = "#196f0cCC"
 )
 
+schedule <- nflfastR:::load_lees_games() %>%
+  # since no tracking data before 2017
+  filter(season >= 2017) %>%
+  select(season, game_id = old_game_id) %>%
+  mutate(game_id = as.integer(game_id))
+
 # get team colors and logo for joining 
 colors <- nflfastR::teams_colors_logos %>%
   select(team_name = team_abbr, team_color, team_color2, team_logo_espn)
@@ -22,7 +28,7 @@ add_info <- function(df) {
   
   # make column names look reasonable
   df <- df %>%
-    janitor::clean_names() 
+    janitor::clean_names()
   
   # NGS highlights use "frame" instead of "frame_id" so make frame_id for these
   if (!"frame_id" %in% names(df) & "frame" %in% names(df)) {
@@ -56,7 +62,10 @@ add_info <- function(df) {
     df <- df %>%
       mutate(
         play_id = substr(play_id, 11, 14) %>% as.integer(),
-        game_id = as.integer(game_id)
+        game_id = as.integer(game_id),
+        
+        # since bdb only has handoffs and doesn't have event, put in the event
+        event = "handoff"
       )
     
   }
@@ -64,13 +73,7 @@ add_info <- function(df) {
   # figure out seasons we need to grab nflfastR data for
   if (!"season" %in% names(df)) {
     df <- df %>%
-      mutate(
-        # this is slow. look into this
-        year = substr(game_id, 1, 4) %>% as.integer(),
-        month = substr(game_id, 5, 6) %>% as.integer(),
-        season = ifelse(month >= 8, year, year + 1)
-      ) %>%
-      select(-year, -month)
+      left_join(schedule, by = "game_id")
   }
   
   min <- min(df$season, na.rm = T)
@@ -113,7 +116,7 @@ add_info <- function(df) {
         team == "home" ~ home_team,
         team == "away" ~ away_team,
         # for the football ("football")
-        TRUE ~ team,
+        TRUE ~ "football",
       ),
       defense = case_when(
         posteam == home_team & team == "away" ~ 1,
@@ -208,7 +211,3 @@ rotate_to_ltr <- function(df) {
   return(df)
   
 }
-
-
-
-
