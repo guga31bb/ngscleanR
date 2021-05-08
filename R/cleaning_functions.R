@@ -6,11 +6,53 @@ nfl_field <- sportyR::geom_football(
   grass_color = "#196f0cCC"
 )
 
-schedule <- nflfastR:::load_lees_games() %>%
+lee <- nflfastR:::load_lees_games() %>%
   # since no tracking data before 2017
-  filter(season >= 2017) %>%
+  filter(season >= 2017)
+
+schedule <- lee %>%
   select(season, game_id = old_game_id) %>%
   mutate(game_id = as.integer(game_id))
+
+max_year <- lee %>%
+  filter(!is.na(result), season >= 2020) %>%
+  tail(1) %>%
+  pull(season)
+
+load_nflfastr <- function(y) {
+  
+    .url <- glue::glue("https://github.com/nflverse/nflfastR-data/blob/master/data/play_by_play_{y}.rds?raw=true")
+    con <- url(.url)
+    pbp <- readRDS(con)
+    close(con)
+    return(pbp)
+
+}
+
+message(glue::glue("Getting nflfastR data"))
+pbp <- map_df(2017:max_year, load_nflfastr) %>%
+  dplyr::rename(nflfastr_game_id = game_id, game_id = old_game_id) %>%
+  dplyr::select(
+    nflfastr_game_id, 
+    game_id, 
+    play_id, 
+    posteam, 
+    home_team, 
+    away_team, 
+    down, 
+    ydstogo, 
+    yardline_100,
+    qtr, 
+    epa, 
+    yards_gained, 
+    air_yards, 
+    desc, 
+    pass,
+    rush,
+    play_type_nfl
+  ) %>%
+  dplyr::mutate(game_id = as.integer(game_id))
+
 
 # get team colors and logo for joining 
 colors <- nflfastR::teams_colors_logos %>%
@@ -70,38 +112,6 @@ add_info <- function(df) {
     
   }
   
-  # figure out seasons we need to grab nflfastR data for
-  if (!"season" %in% names(df)) {
-    df <- df %>%
-      left_join(schedule, by = "game_id")
-  }
-  
-  min <- min(df$season, na.rm = T)
-  max <- max(df$season, na.rm = T)
-  
-  message(glue::glue("Getting nflfastR data from {min} to {max}"))
-  pbp <- nflfastR::load_pbp(min:max) %>%
-    dplyr::rename(nflfastr_game_id = game_id, game_id = old_game_id) %>%
-    dplyr::select(
-      nflfastr_game_id, 
-      game_id, 
-      play_id, 
-      posteam, 
-      home_team, 
-      away_team, 
-      down, 
-      ydstogo, 
-      yardline_100,
-      qtr, 
-      epa, 
-      yards_gained, 
-      air_yards, 
-      desc, 
-      pass,
-      rush,
-      play_type_nfl
-    ) %>%
-    dplyr::mutate(game_id = as.integer(game_id))
   
   df %>%
     # get rid of the columns we're joining so no join duplicates
@@ -207,6 +217,47 @@ rotate_to_ltr <- function(df) {
         dir_y = ifelse(is.na(dir), NA_real_, cos(dir_rad))
       )
   }
+  
+  return(df)
+  
+}
+
+
+
+# compute angle difference between x and y and 
+# some prefix_x and prefix_y,
+# returning o_to_prefix
+compute_o_diff <- function(df, prefix = "qb") {
+  
+  name_x <- sym(paste0(prefix, "_x"))
+  name_y <- sym(paste0(prefix, "_y"))
+  
+  new_column <- paste0("o_to_", prefix)
+  
+  df <- df %>%
+    mutate(
+      # compute distances
+      dis_x = {{name_x}} - x, 
+      dis_y = {{name_y}} - y,
+      
+      # get atan2 in degrees
+      tmp = atan2(dis_y, dis_x) * (180 / pi),
+      
+      # set clockwise (360 - tmp) with 0 on top instead of east (+ 90)
+      # https://math.stackexchange.com/questions/707673/find-angle-in-degrees-from-one-point-to-another-in-2d-space
+      tmp = (360 - tmp) + 90,
+      
+      # make sure 0 to 360
+      tmp = case_when(tmp < 0 ~ tmp + 360, 
+                      tmp > 360 ~ tmp - 360 ,
+                      TRUE ~ tmp),
+      
+      # difference in angles
+      diff = abs(o - tmp),
+      
+      # angle to qb
+      !!new_column := pmin(360 - diff, diff)
+    )
   
   return(df)
   

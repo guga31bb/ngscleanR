@@ -13,13 +13,22 @@ df_track <- g %>% filter(home_team == "SEA", season == 2019, play_id == 290, pos
 plot_play <- function(
   df_track, 
   orientation = TRUE, 
+  dot_size = 6,
   numbers = TRUE,
   animated = TRUE,
   animated_h = 4,
   animated_w = 8,
-  animated_res = 200) {
+  animated_res = 200,
+  frame = NULL
+  ) {
   
   caption <- glue::glue("{df_track$nflfastr_game_id[1]} {df_track$down[1]}&{df_track$ydstogo[1]}: Q{df_track$qtr[1]} {df_track$desc[1]}")
+  
+  if (!is.null(frame)) {
+    
+    df_track <- df_track %>% filter(frame_id == frame)
+    
+  }
   
   fig <- nfl_field +
     # dots
@@ -29,7 +38,7 @@ plot_play <- function(
                  df_track$team_name == "football" | df_track$defense == 1,
                  19, 1
                ), 
-               size = 4
+               size = dot_size
     ) +
     labs(
       caption = caption
