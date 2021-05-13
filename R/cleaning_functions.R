@@ -175,7 +175,11 @@ rotate_to_ltr <- function(df) {
       
       # reflect x & y
       x = ifelse(to_left == 1, 120 - x, x),
-      y = ifelse(to_left == 1, 160/3 - y, y)
+      y = ifelse(to_left == 1, 160/3 - y, y),
+      
+      # get x value of line of scrimmage
+      los_x = 110 - yardline_100,
+      dist_from_los = x - los_x
     )
   
   # if orientation is in df, standardize it
@@ -214,7 +218,10 @@ rotate_to_ltr <- function(df) {
         # get orientation and direction in x and y direction
         # NA checks are for the ball
         dir_x = ifelse(is.na(dir), NA_real_, sin(dir_rad)),
-        dir_y = ifelse(is.na(dir), NA_real_, cos(dir_rad))
+        dir_y = ifelse(is.na(dir), NA_real_, cos(dir_rad)),
+        
+        s_x = dir_x * s,
+        s_y = dir_y * s
       )
   }
   
@@ -227,6 +234,8 @@ rotate_to_ltr <- function(df) {
 # compute angle difference between x and y and 
 # some prefix_x and prefix_y,
 # returning o_to_prefix
+
+# TODO: deal with multiple QB in one play
 compute_o_diff <- function(df, prefix = "qb") {
   
   name_x <- sym(paste0(prefix, "_x"))
@@ -262,3 +271,46 @@ compute_o_diff <- function(df, prefix = "qb") {
   return(df)
   
 }
+
+# restrict frame range by events
+cut_plays <- function(df, 
+
+  # cut off anything that happens after this event
+  end_events = c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike"), 
+  # remove plays with throws before this frame
+  throw_frame = 25) {
+  
+  # default truncates data at pass
+  if (!is.null(end_events)) {
+    
+    df <- df %>%
+      arrange(game_id, play_id, frame_id) %>%
+      group_by(game_id, play_id) %>%
+      mutate(
+        end_event = cumsum(event %in% end_events)
+      ) %>%
+      filter(end_event < 1) %>%
+      select(-end_event) %>%
+      ungroup()
+    
+  }
+  
+  # if the play ends before throw_frame, throw out the play
+  # frame 25 is 1.5 seconds after snap
+  if (!is.null(throw_frame)) {
+    
+    df <- df %>%
+      arrange(game_id, play_id, frame_id) %>%
+      group_by(game_id, play_id) %>%
+      mutate(max_frame = max(frame_id)) %>%
+      filter(max_frame >= throw_frame) %>%
+      ungroup()
+    
+  }
+  
+  return(df)
+  
+}
+
+
+
