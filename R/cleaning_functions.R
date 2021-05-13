@@ -6,6 +6,9 @@ nfl_field <- sportyR::geom_football(
   grass_color = "#196f0cCC"
 )
 
+# nflfastr pbp 2017-2020
+pbp <- readRDS("data-raw/nflfastr_plays.rds")
+
 lee <- nflfastR:::load_lees_games() %>%
   # since no tracking data before 2017
   filter(season >= 2017)
@@ -29,29 +32,35 @@ load_nflfastr <- function(y) {
 
 }
 
-message(glue::glue("Getting nflfastR data"))
-pbp <- map_df(2017:max_year, load_nflfastr) %>%
-  dplyr::rename(nflfastr_game_id = game_id, game_id = old_game_id) %>%
-  dplyr::select(
-    nflfastr_game_id, 
-    game_id, 
-    play_id, 
-    posteam, 
-    home_team, 
-    away_team, 
-    down, 
-    ydstogo, 
-    yardline_100,
-    qtr, 
-    epa, 
-    yards_gained, 
-    air_yards, 
-    desc, 
-    pass,
-    rush,
-    play_type_nfl
-  ) %>%
-  dplyr::mutate(game_id = as.integer(game_id))
+# get newer pbp if it exists
+if (max_year > 2020) {
+  
+  new_pbp <- map_df(max_year, load_nflfastr) %>%
+    dplyr::rename(nflfastr_game_id = game_id, game_id = old_game_id) %>%
+    dplyr::select(
+      nflfastr_game_id, 
+      game_id, 
+      play_id, 
+      posteam, 
+      home_team, 
+      away_team, 
+      down, 
+      ydstogo, 
+      yardline_100,
+      qtr, 
+      epa, 
+      yards_gained, 
+      air_yards, 
+      desc, 
+      pass,
+      rush,
+      play_type_nfl
+    ) %>%
+    dplyr::mutate(game_id = as.integer(game_id))
+  
+  pbp <- bind_rows(pbp, new_pbp)
+  
+}
 
 
 # get team colors and logo for joining 

@@ -27,3 +27,45 @@ bdb21 <- suppressMessages(readr::read_csv(glue::glue("../nfl-big-data-bowl-2021/
 bdb21 %>%
   filter(gameId == 2018120600) %>%
   saveRDS("data-raw/sample_bdb_2021.rds")
+
+# # #
+# create old nflfastR data
+
+load_nflfastr <- function(y) {
+  
+  .url <- glue::glue("https://github.com/nflverse/nflfastR-data/blob/master/data/play_by_play_{y}.rds?raw=true")
+  con <- url(.url)
+  pbp <- readRDS(con)
+  close(con)
+  return(pbp)
+  
+}
+
+
+message(glue::glue("Getting nflfastR data"))
+pbp <- map_df(2017:2020, load_nflfastr) %>%
+  dplyr::rename(nflfastr_game_id = game_id, game_id = old_game_id) %>%
+  dplyr::select(
+    nflfastr_game_id, 
+    game_id, 
+    play_id, 
+    posteam, 
+    home_team, 
+    away_team, 
+    down, 
+    ydstogo, 
+    yardline_100,
+    qtr, 
+    epa, 
+    yards_gained, 
+    air_yards, 
+    desc, 
+    pass,
+    rush,
+    play_type_nfl
+  ) %>%
+  dplyr::mutate(game_id = as.integer(game_id))
+
+saveRDS(pbp, "data-raw/nflfastr_plays.rds")
+
+
