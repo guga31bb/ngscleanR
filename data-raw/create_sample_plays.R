@@ -49,6 +49,7 @@ pbp <- map_df(2017:2020, load_nflfastr) %>%
     nflfastr_game_id, 
     game_id, 
     play_id, 
+    week,
     posteam, 
     home_team, 
     away_team, 
@@ -69,3 +70,27 @@ pbp <- map_df(2017:2020, load_nflfastr) %>%
 saveRDS(pbp, "data-raw/nflfastr_plays.rds")
 
 
+# # # 
+# create coverage labels
+labels <- read_csv("../nfl-big-data-bowl-2021/input/coverages_2018.csv") %>%
+  mutate(coverage = case_when(
+    coverage == "3 Seam" ~ "Cover 3 Zone",
+    coverage == "Cover 1 Double" ~ "Cover 1 Man",
+    coverage %in% c("Red Zone", "Goal Line") ~ "Red zone / goal line",
+    coverage == "Mis" | is.na(coverage) ~ "Other / misc",
+    TRUE ~ coverage
+  )) %>%
+  filter(coverage %in% c(
+    "Cover 0 Man",
+    "Cover 1 Man",
+    "Cover 2 Man",
+    "Cover 2 Zone",
+    "Cover 3 Zone",
+    "Cover 4 Zone",
+    "Cover 6 Zone",
+    "Bracket",
+    "Prevent"
+  ))
+
+labels %>%
+  saveRDS("data-raw/coverage_labels.rds")

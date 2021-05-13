@@ -8,22 +8,9 @@ get_bdb <- function(w) {
   read_csv(glue::glue("../nfl-big-data-bowl-2021/input/week{w}.csv"))
 }
 
-s_bdb21 <- map_df(1:3, get_bdb)
+s_bdb21 <- map_df(1:5, get_bdb)
 
 labels <- readRDS("data-raw/coverage_labels.rds")
-
-# coverage         n
-# <chr>        <int>
-# 1 Bracket         94
-# 2 Cover 0 Man    459
-# 3 Cover 1 Man   5870
-# 4 Cover 2 Man    612
-# 5 Cover 2 Zone  2490
-# 6 Cover 3 Zone  7312
-# 7 Cover 4 Zone  2079
-# 8 Cover 6 Zone  1458
-# 9 Prevent        110
-
 
 df <- s_bdb21 %>%
   # do all the cleaning
@@ -141,8 +128,8 @@ play_indices <- df %>%
   mutate(i = 1 : n())
 
 # for testing
-row <- play_indices %>%
-  dplyr::slice(1798)
+# row <- play_indices %>%
+#   dplyr::slice(1798)
 
 fill_row <- function(row) {
   
@@ -245,6 +232,9 @@ train_y[1:plays] <- df %>%
   dplyr::slice(1) %>%
   ungroup() %>%
   pull(coverage)
+
+rm(df)
+gc()
 
 # right now we have tensors for train_x and train_y that also include test data (week 1)
 dim(train_x)
