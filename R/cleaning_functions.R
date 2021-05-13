@@ -41,6 +41,7 @@ if (max_year > 2020) {
       nflfastr_game_id, 
       game_id, 
       play_id, 
+      week,
       posteam, 
       home_team, 
       away_team, 
@@ -125,7 +126,7 @@ add_info <- function(df) {
   df %>%
     # get rid of the columns we're joining so no join duplicates
     select(-tidyselect::any_of(c(
-      "posteam", "home_team", "away_team", 
+      "posteam", "home_team", "away_team", "week",
       "down", "ydstogo", "qtr", "yardline_100", "epa",
       "yards_gained", "air_yards", "desc", "pass", "rush", "play_type_nfl"
       ))) %>%
