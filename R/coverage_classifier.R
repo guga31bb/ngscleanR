@@ -1,240 +1,56 @@
-# https://www.kaggle.com/jccampos/nfl-2020-winner-solution-the-zoo
-# 
 library(tidyverse)
 library(torch)
-source("R/cleaning_functions.R")
 
-get_bdb <- function(w) {
-  read_csv(glue::glue("../nfl-big-data-bowl-2021/input/week{w}.csv"))
+augment_data <- function(df) {
+  
+  # testing
+  # df <- train_data
+  
+  # x, y, sx, sy, o_qb, los_dist, xdiff, ydiff, sxdiff, sydiff
+  # 1, XX, 1, -1, 1, 1, 1, -1, 1, -1
+  
+  # indices of the elements that need to be flipped
+  
+  flip_idx <- c(4, 8, 10)
+  t <- torch_ones_like(df)
+  t[, flip_idx, , ] <- -1
+  
+  # first fix: multiply by -1 where needed
+  flipped <- df * t
+  
+  # now flip y coordinates: 2nd feature dimension
+  t <- torch_zeros_like(df)
+  t[, 2, , ] <- 160/3
+  
+  # flip around y
+  flipped[, 2, , ] <- t[, 2, , ] - flipped[, 2, , ]
+  
+  return(flipped)
+  
+  # df[1, 2, ..]
+  # flipped[1, 2, ..]
+  # 
+  # df[1, 4, ..]
+  # flipped[1, 4, ..]
 }
 
-s_bdb21 <- map_df(1:5, get_bdb)
 
-labels <- readRDS("data-raw/coverage_labels.rds")
+# get tensors
+train_x <- torch_load("data/train_x_one_frame.pt")
+train_y <- torch_load("data/train_y_one_frame.pt")
 
-df <- s_bdb21 %>%
-  # do all the cleaning
-  wrapper() %>%
-  # stop plays at pass forward
-  # and remove short (< 1 seconds) plays
-  cut_plays(throw_frame = 20) %>%
-  mutate(play = paste0(game_id, "_", play_id))
+# get pre-saved lengths
+lengths <- readRDS("data/data_sizes_one_frame.rds")
 
-# get qb location
-# first, throw out plays with 2 qbs
-n_qbs <- df %>%
-  filter(position == "QB") %>%
-  group_by(game_id, play_id, frame_id) %>%
-  summarize(qbs = n()) %>%
-  group_by(game_id, play_id) %>%
-  summarise(qbs = max(qbs)) %>%
-  filter(qbs == 1) %>%
-  ungroup()
+test_length <- lengths$test_length
+plays <- lengths$plays
 
-# now get the location of the QB
-qbs <- df %>%
-  filter(position == "QB") %>%
-  dplyr::select(
-    game_id,
-    play_id,
-    frame_id,
-    qb_x = x,
-    qb_y = y
-  ) %>%
-  inner_join(n_qbs, by = c("game_id", "play_id")) %>%
-  select(-qbs)
+input_channels <- dim(train_x)[2]
 
-# add qb location
-df <- df %>%
-  inner_join(labels, by = c("game_id", "play_id")) %>%
-  left_join(qbs, by = c("game_id", "play_id", "frame_id")) %>%
-  
-  # for this first pass
-  filter(frame_id == 30) %>%
-  
-  compute_o_diff("qb") %>%
-  # scale 0 to 1
-  mutate(o_to_qb = o_to_qb / 180) %>%
-  dplyr::filter(
-    position != "QB",
-    !is.na(position),
-    !is.na(o_to_qb)
-  ) %>%
-  dplyr::select(
-    game_id,
-    play_id,
-    week,
-    frame_id,
-    nfl_id,
-    play,
-    defense,
-    coverage,
-    x, 
-    y,
-    s_x,
-    s_y,
-    o_to_qb,
-    # yardline_100,
-    los_x,
-    dist_from_los
-  ) %>%
-  # this slice is probably not necessary anymore after getting rid of plays
-  # with 2 qbs
-  group_by(game_id, play_id, frame_id, nfl_id) %>%
-  dplyr::slice(1) %>%
-  # for getting plays without any defense or offense players
-  group_by(game_id, play_id, frame_id) %>%
-  mutate(
-    n_defenders = sum(defense),
-    n_offense = sum(1 - defense)
-  ) %>%
-  ungroup() %>%
-  filter(n_defenders > 2 & n_offense > 2) %>%
-  select(-game_id, -play_id, -n_defenders, -n_offense) %>%
-  arrange(
-    play, frame_id, defense, nfl_id
-  )
-
-df
-
-
-# using week 1 for testing so see how long this is
-# assumes data ordered with week 1 first
-test_length <- df %>% filter(week == 1) %>% select(play) %>% unique() %>% nrow()
-
-# offense: 4-5 players
-# defense: 5-11 players
-
-# def Sx, y
-# def o to qb
-# def distance from los
-# off x, y - def x, y
-# off Sx, y - def Sx, y
-
-# input shape (n_features (8) * n_defenders (11) * n_non-qb-offense (5))
-# features 1-4 Sx, Sy, o_to_qb, dist_from_los, 
-# (5) off x - def x, (6) off y - def, (7) off Sx - def, (8) off Sy - def
-
-plays <- n_distinct(df$play)
-plays
 test_length
+plays
 
-# i, features, def, off, 
-train_x = torch_zeros(plays, 8, 11, 5)
-
-play_indices <- df %>%
-  select(play) %>%
-  unique() %>%
-  mutate(i = 1 : n())
-
-# for testing
-# row <- play_indices %>%
-#   dplyr::slice(1798)
-
-fill_row <- function(row) {
-  
-  i = row$i
-  playid = row$play
-  
-  offense_df <- df %>%
-    filter(defense == 0, play == playid) %>%
-    select(play, o_x = x, o_y = y, o_s_x = s_x, o_s_y = s_y, los_x)
-  
-  # if only 4 offensive players, make a fake one standing at los
-  # not moving anywhere
-  # adding a little noise bc otherwise things were breaking with all the zeros
-  if (nrow(offense_df) == 4) {
-    dummy_player <- tibble::tibble(
-      "play" = offense_df$play[1],
-      "o_x" = offense_df$los_x[1],
-      "o_y" = 160/6,
-      "o_s_x" = 0 + rnorm(1, sd = .1),
-      "o_s_y" = 0 + rnorm(1, sd = .1)
-    )
-    
-    offense_df <- bind_rows(
-      offense_df,
-      dummy_player
-    )
-  }
-  
-  defense_df <- df %>%
-    filter(defense == 1, play == playid)
-  
-  defenders <- nrow(defense_df)
-  
-  # fill in dummy defenders
-  if (defenders < 11) {
-    
-    # standing on los, not moving, facing qb
-    dummy_player <- tibble::tibble(
-      "play" = defense_df$play[1],
-      "frame_id" = defense_df$frame_id[1],
-      "x" = defense_df$los_x[1],
-      "defense" = 1,
-      "y" = 160/6,
-      "s_x" = 0 + rnorm(1, sd = .1),
-      "s_y" = 0 + rnorm(1, sd = .1),
-      "o_to_qb" = 0 + rnorm(1, sd = 1),
-      "dist_from_los" = 0
-    ) %>%
-      # why does this work? who knows
-      # https://statisticsglobe.com/repeat-rows-of-data-frame-n-times-in-r
-      slice(rep(1, each = 11 - defenders))
-    
-    defense_df <- bind_rows(
-      defense_df,
-      dummy_player
-    )
-    
-  }
-  
-  # test
-  big_df <- defense_df %>%
-    left_join(offense_df, by = "play") %>%
-    mutate(diff_x = o_x - x, diff_y = o_y - y, diff_s_x = o_s_x - s_x, diff_s_y = o_s_y - s_y) %>%
-    select(s_x, s_y, o_to_qb, dist_from_los, starts_with("diff_"))
-  
-  # fill in info for each defender
-  for (j in 1:11) {
-    
-    # message(j)
-    
-    start <- 1 + 5 * (j-1)
-    end <- 5 * j
-    
-    train_x[i, 1:8, j, ] <- big_df %>% 
-      dplyr::slice(start:end) %>%
-      as.matrix() %>%
-      t()
-    
-  }
-  
-  return(train_x)
-  
-}
-
-# build the tensor for train and test data
-walk(1 : nrow(play_indices), ~{
-  if(.x %% 50 == 0) {
-    message(glue::glue("{.x} of {nrow(play_indices)}"))
-  }
-  fill_row(play_indices %>% dplyr::slice(.x))
-  })
-
-train_x
-
-train_y <- torch_zeros(plays, dtype = torch_long())
-
-train_y[1:plays] <- df %>%
-  mutate(coverage = as.factor(coverage) %>% as.integer()) %>%
-  group_by(play) %>%
-  dplyr::slice(1) %>%
-  ungroup() %>%
-  pull(coverage)
-
-rm(df)
-gc()
+input_channels
 
 # right now we have tensors for train_x and train_y that also include test data (week 1)
 dim(train_x)
@@ -274,8 +90,14 @@ tracking_dataset <- dataset(
 train_id <- sample(1:plays, ceiling(0.80 * plays))
 valid_id <- setdiff(1:plays, train_id)
 
+train_data <- train_x[train_id, , , ]
+
+# if you want to augment with flipped data
+# otherwise comment this out
+train_data <- torch_cat(list(train_data, augment_data(train_data)))
+
 # use dataloaders for train and validation
-train_ds <- tracking_dataset(train_x[train_id, , , ], train_y[train_id])
+train_ds <- tracking_dataset(train_data, train_y[train_id])
 valid_ds <- tracking_dataset(train_x[valid_id, , , ], train_y[valid_id])
 
 # Dataloaders
@@ -285,9 +107,6 @@ train_dl <- train_ds %>%
 valid_dl <- valid_ds %>%
   dataloader(batch_size = 64, shuffle = FALSE)
 
-length(train_dl)
-length(valid_dl)
-
 net <- nn_module(
   "Net",
   
@@ -295,23 +114,23 @@ net <- nn_module(
     
     self$conv_block_1 <- nn_sequential(
       nn_conv2d(
-        in_channels = 8,
+        in_channels = input_channels,
         out_channels = 128,
         kernel_size = 1
       ),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_conv2d(
         in_channels = 128,
         out_channels = 160,
         kernel_size = 1
       ),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_conv2d(
         in_channels = 160,
         out_channels = 128,
         kernel_size = 1
       ),
-      nn_relu()
+      nn_relu(inplace = TRUE),
     )
     
     self$conv_block_2 <- nn_sequential(
@@ -320,31 +139,31 @@ net <- nn_module(
         out_channels = 160,
         kernel_size = 1
       ),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_batch_norm1d(160),
       nn_conv1d(
         in_channels = 160,
         out_channels = 96,
         kernel_size = 1
       ),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_batch_norm1d(96),
       nn_conv1d(
         in_channels = 96,
         out_channels = 96,
         kernel_size = 1
       ),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_batch_norm1d(96)
     )
     
     self$linear_block <- nn_sequential(
       nn_linear(96, 96),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       nn_batch_norm1d(96),
       
       nn_linear(96, 256),
-      nn_relu(),
+      nn_relu(inplace = TRUE),
       # nn_batch_norm1d(256),
       
       nn_layer_norm(256),
@@ -364,9 +183,9 @@ net <- nn_module(
     
     # first pool layer
     avg <- nn_avg_pool2d(kernel_size = c(1, 5))(x) %>%
-      torch_squeeze()
+      torch_squeeze(-1)
     max <- nn_max_pool2d(kernel_size = c(1, 5))(x) %>%
-      torch_squeeze()
+      torch_squeeze(-1)
     
     x <- 0.7 * avg + 0.3 * max
     
@@ -377,9 +196,9 @@ net <- nn_module(
     
     # second pool layer
     avg <- nn_avg_pool1d(kernel_size = 11)(x) %>%
-      torch_squeeze()
+      torch_squeeze(-1)
     max <- nn_max_pool1d(kernel_size = 11)(x) %>%
-      torch_squeeze()
+      torch_squeeze(-1)
     
     x <- 0.7 * avg + 0.3 * max
     
@@ -392,92 +211,96 @@ net <- nn_module(
 
 model <- net()
 
-
-# test_batch <- enumerate(train_dl)[[10]]
-# model(test_batch[[1]])
+# to test something passing through model
+# b <- enumerate(train_dl)[[1]][[1]]
+# model(b)
 
 # For fitting, we use Adam optimizer with a one cycle scheduler over a total of 50 epochs for each fit 
 # with lower lr being 0.0005 and upper lr being 0.001 and 64 batch size
 
+# if we need to load (currently broken in torch)
+# model <- torch_load("data/model.pt")
+
 optimizer <- optim_adam(model$parameters, lr = 0.001)
 
-
-for (epoch in 1:50) {
+epochs <- 20
+for (epoch in 1:epochs) {
   
   train_losses <- c()
   valid_losses <- c()
   
+  # train step
   model$train()
-  
   for (b in enumerate(train_dl)) {
-    # skip if the batch is too small
-    if (dim(b[[1]])[1] < 10) {
-      # message(paste("batch too small"))
-      next
-    }
-    
-    x <- b[[1]]
-    y <- b[[2]]
-    
     optimizer$zero_grad()
-    output <- model(x)
-    loss <- nnf_cross_entropy(output, y)
+    loss <- nnf_cross_entropy(model(b[[1]]), b[[2]])
     loss$backward()
     optimizer$step()
     train_losses <- c(train_losses, loss$item())
   }
   
+  # validation step
   model$eval()
-  
   for (b in enumerate(valid_dl)) {
-    # skip if the batch is too small
-    if (dim(b[[1]])[1] < 10) {
-      # message(paste("batch too small"))
-      next
-    }
-    
-    x <- b[[1]]
-    y <- b[[2]]
-    
-    output <- model(x)
-    loss <- nnf_cross_entropy(output, y)
-    valid_losses <- c(valid_losses, loss$item())
+    valid_losses <- c(valid_losses, nnf_cross_entropy(model(b[[1]]), b[[2]])$item())
   }
   
-  # print(l)
+  torch_save(model, "data/model.pt")
+
+  cat(sprintf("\nLoss at epoch %d: training: %1.4f, validation: %1.4f", epoch, mean(train_losses), mean(valid_losses)))
   
-  cat(sprintf("\nLoss at epoch %d: training: %1.5f, validation: %1.5f\n", epoch, mean(train_losses), mean(valid_losses)))
+  # who knows if this does anything
+  gc()
 }
 
 
-
-
+# evaluate on test set
 model$eval()
-
-# test_batch <- enumerate(valid_dl)[[1]]
-# x <- test_x
 
 labels <- test_y %>%
   as.matrix() %>%
   as_tibble() %>%
   set_names("label")
 
-# label frequency
-labels %>% group_by(label) %>% summarize(n=n())
-
 output <- model(test_x)
+output_augmented <- model(augment_data(test_x))
+
+output <- (output + output_augmented) / 2
+
 predictions <- as.matrix(output) 
 
 predictions <- predictions %>% 
   as_tibble() %>%
   transform(prediction = max.col(predictions)) %>%
   bind_cols(labels) %>%
-  mutate(correct = ifelse(prediction == label, 1, 0))
+  mutate(correct = ifelse(prediction == label, 1, 0)) %>%
+  as_tibble() %>%
+  mutate(
+    label = as.factor(label),
+    prediction = as.factor(prediction)
+  )
 
-predictions %>% group_by(label) %>% summarize(n=n())
-predictions %>% group_by(prediction) %>% summarize(n=n())
+message(glue::glue("Week 1 test: {round(100*mean(predictions$correct), 0)}% correct"))
 
-mean(predictions$correct)
+saveRDS(
+  object = tibble::tibble("accuracy" = round(100*mean(predictions$correct), 0)),
+  file = "data/results.rds"
+)
+
+# confusion matrix
+# conf_mat <- caret::confusionMatrix(predictions$prediction, predictions$label)
+# conf_mat$table %>%
+#   broom::tidy() %>%
+#   dplyr::rename(
+#     Target = Reference,
+#     N = n
+#   ) %>%
+#   cvms::plot_confusion_matrix(
+#     add_sums = TRUE, place_x_axis_above = FALSE,
+#     add_normalized = FALSE)
+
+# predictions %>% head(20)
+
 
 # coverage         n
 # <chr>        <int>
