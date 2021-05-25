@@ -25,26 +25,21 @@ start_frame_number <- 0
 end_frame_number <- 45
 
 # frames to keep
-keep_frames <- seq(0, 45, by = 5)
-
-# after re-coding
-# frame 3: snap
-# 5: 1s
-# 6: 1.5s
-# 7: 2s
-# 9: 3s
-
-# maybe keep 15 through 40?
+# note that later on frame_id will be re-coded to be 1, ... , F
+keep_frames <- seq(10, 44, by = 2)
 
 # pull week 1 through this week:
 final_week <- 17
 
+# get labels
 labels <- readRDS("data-raw/coverage_labels.rds")
 
+# get_bdb is a function in coverage_classifier_functions.R
 df <- map_df(1:final_week, get_bdb)
 
 df
 
+# put together the df of defense players relative to offense players
 offense_df <- df %>%
   filter(defense == 0) %>%
   select(play, frame_id, o_x = x, o_y = y, o_s_x = s_x, o_s_y = s_y, o_a_x = a_x, o_a_y = a_y)
@@ -64,9 +59,9 @@ rel_df
 object.size(df) %>% format("MB")
 object.size(rel_df) %>% format("MB")
 
-# using week 1 for testing so see how long this is
+# using weeks 1 and 2 for testing so see how long this is
 # assumes data ordered with week 1 first
-test_length <- df %>% filter(week == 1) %>% select(play) %>% unique() %>% nrow()
+test_length <- df %>% filter(week <= 2) %>% select(play) %>% unique() %>% nrow()
 
 # offense: 4-5 players
 # defense: 5-11 players
@@ -83,7 +78,7 @@ test_length <- df %>% filter(week == 1) %>% select(play) %>% unique() %>% nrow()
 # (7) off x - def x, (8) off y - def, (9) off Sx - def, (10) off Sy - def
 
 play_indices <- df %>%
-  select(play, frame_id) %>%
+  select(play, frame_id, play, week) %>%
   unique() %>%
   # get play index for 1 : n_plays
   mutate(
@@ -94,29 +89,15 @@ play_indices <- df %>%
   mutate(f = 1 : n()) %>%
   ungroup()
 
+play_indices
+
 play_indices %>%
   saveRDS("data/valid_plays.rds")
 
 n_frames <- n_distinct(play_indices$f)
 plays <- n_distinct(df$play)
 plays
-test_length
 n_frames
-
-# for accessing later
-if (one_frame) {
-  tibble::tibble(
-    "test_length" = test_length,
-    "plays" = plays
-  ) %>%
-    saveRDS("data/data_sizes_one_frame.rds")
-} else {
-  tibble::tibble(
-    "test_length" = test_length,
-    "plays" = plays
-  ) %>%
-    saveRDS("data/data_sizes.rds")
-}
 
 # i, features, def, off, 
 train_x = torch_empty(plays, n_frames, n_features, 11, 5)

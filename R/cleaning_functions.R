@@ -231,7 +231,10 @@ rotate_to_ltr <- function(df) {
         dir_y = ifelse(is.na(dir), NA_real_, cos(dir_rad)),
         
         s_x = dir_x * s,
-        s_y = dir_y * s
+        s_y = dir_y * s,
+        
+        a_x = dir_x * a,
+        a_y = dir_y * a
       )
   }
   
@@ -286,7 +289,7 @@ compute_o_diff <- function(df, prefix = "qb") {
 cut_plays <- function(df, 
 
   # cut off anything that happens after this event
-  end_events = c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike"), 
+  end_events = c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike", "tackle", "pass_shovel"), 
   # remove plays with throws before this frame
   throw_frame = 25) {
   

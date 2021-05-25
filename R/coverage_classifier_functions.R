@@ -365,22 +365,12 @@ get_bdb <- function(w) {
       frame_id %in% keep_frames
     ) %>%
     ungroup() %>%
-    # make frame IDs start at 1
-    # mutate(frame_id = frame_id - min(frame_id) + 1) %>%
     select(-game_id, -play_id, -n_defenders, -n_offense) %>%
     arrange(
       play, frame_id, defense, nfl_id
     )
   
-  # re-code frame IDs to be 1 to F
-  unique(df$frame_id) %>% 
-    as_tibble() %>% 
-    mutate(frame_idx = 1 : n()) %>% 
-    dplyr::rename(frame_id = value) %>% 
-    left_join(df, by = "frame_id") %>% 
-    mutate(frame_id = frame_idx) %>% 
-    select(-frame_idx) %>%
-    return()
+  df
   
 }
 
