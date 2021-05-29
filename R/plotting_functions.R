@@ -1,5 +1,10 @@
 
 
+nfl_field <- sportyR::geom_football(
+  'nfl', 
+  # the CC at the end gives the field lower alpha
+  grass_color = "#196f0cCC"
+)
 
 plot_play <- function(
   df_track, 

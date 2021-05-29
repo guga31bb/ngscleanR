@@ -1,10 +1,5 @@
 library(tidyverse)
 
-nfl_field <- sportyR::geom_football(
-  'nfl', 
-  # the CC at the end gives the field lower alpha
-  grass_color = "#196f0cCC"
-)
 
 # nflfastr pbp 2017-2020
 pbp <- readRDS("data-raw/nflfastr_plays.rds")
@@ -290,21 +285,31 @@ cut_plays <- function(df,
 
   # cut off anything that happens after this event
   end_events = c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike", "tackle", "pass_shovel"), 
+  # keep this many frames after the end event
+  time_after_event = 0,
   # remove plays with throws before this frame
   throw_frame = 25) {
   
   # default truncates data at pass
   if (!is.null(end_events)) {
     
-    df <- df %>%
+    mins <- df %>%
       arrange(game_id, play_id, frame_id) %>%
       group_by(game_id, play_id) %>%
       mutate(
         end_event = cumsum(event %in% end_events)
       ) %>%
-      filter(end_event < 1) %>%
-      select(-end_event) %>%
-      ungroup()
+      filter(end_event > 0) %>%
+      dplyr::slice(1) %>%
+      ungroup() %>%
+      # if throw happens on frame 36 and user wants 5 frames, keep 36 - 40
+      mutate(end_frame = frame_id + time_after_event - 1) %>%
+      select(game_id, play_id, end_frame)
+    
+    df <- df %>%
+      left_join(mins, by = c("game_id", "play_id")) %>%
+      filter(frame_id <= end_frame)
+    
     
   }
   
