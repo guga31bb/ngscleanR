@@ -1,19 +1,12 @@
 
 
-g <- bdb20 %>%
-  add_info() %>%
-  rotate_to_ltr()
-
-g %>%
-  filter(season == 2019, home_team == "SEA")
-
-df_track <- g %>% filter(home_team == "SEA", season == 2019, play_id == 290, possession_team == "SEA")
-
 
 plot_play <- function(
   df_track, 
   orientation = TRUE, 
   dot_size = 6,
+  segment_length = 2.5,
+  segment_size = 1.5,
   numbers = TRUE,
   animated = TRUE,
   animated_h = 4,
@@ -55,8 +48,8 @@ plot_play <- function(
       # orientation lines
       geom_segment(
         data = df_track,
-        aes(x, y, xend = x + 2.5 * o_x, yend = y + 2.5 * o_y),
-        color = df_track$team_color, size = 1.5
+        aes(x, y, xend = x + segment_length * o_x, yend = y + segment_length * o_y),
+        color = df_track$team_color, size = segment_size
       )
     
   }
@@ -90,8 +83,8 @@ plot_play <- function(
      height = animated_h, width = animated_w, units = "in", 
      res = animated_res,
      nframes = n_distinct(df_track$frame_id),
-     start_pause = 5,
-     end_pause = 3
+     start_pause = 6,
+     end_pause = 4
     )
     
   }
@@ -112,19 +105,3 @@ animate_play <- function(
   
 }
 
-# before animation
-
-
-fig
-
-plot <- fig +
-  gganimate::transition_time(df_track$frame_id)
-
-gganimate::animate(plot, 
-                   # video
-                   renderer = gganimate::av_renderer(),
-                   height = 4, width = 8, units = "in", res = 250,
-                   nframes = n_distinct(df_track$frame_id)
-)
-
-gganimate::anim_save("test.mp4")
