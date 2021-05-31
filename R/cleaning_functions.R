@@ -283,7 +283,7 @@ prepare_bdb_week <- function(
   keep_frames = NULL,
   drop_positions = c("QB")
   ) {
-  df <- read_csv(glue::glue("{dir}/week{week}.csv")) %>%
+  df <- readr::read_csv(glue::glue("{dir}/week{week}.csv")) %>%
 
     # do all the cleaning
     clean_and_rotate() %>%

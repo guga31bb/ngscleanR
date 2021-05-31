@@ -21,6 +21,7 @@ Imports:
     glue,
     janitor,
     magrittr,
+    readr,
     tibble (>= 3.0),
     tidyr (>= 1.0.0),
     tidyselect (>= 1.1.0),

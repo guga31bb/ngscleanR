@@ -1,0 +1,6 @@
+^ngscleanR\.Rproj$
+^\.Rproj\.user$
+^data-raw$
+^LICENSE\.md$
+^vignettes$
+^vignettes/getting-started.Rmd
