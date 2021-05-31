@@ -1,0 +1,104 @@
+---
+title: "Getting started"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{getting-started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(ngscleanR)
+library(tidyverse)
+library(patchwork)
+```
+
+## Load sample week
+
+```{r}
+tracking <- readRDS("../data-raw/sample_bdb_2021.rds")
+str(tracking)
+
+labs <- readRDS("../data-raw/coverages_week1.rds") %>%
+  mutate(play = paste0(gameId, "_", playId)) %>%
+  select(play, coverage)
+str(labs)
+```
+
+## The main function
+
+This will clean up the data, attach some information associated with the play, and make everything face from left ot right.
+
+```{r}
+cleaned <- tracking %>%
+  clean_and_rotate() %>%
+  # mutate(play = paste0(game_id, "_", play_id)) %>%
+  inner_join(labs, by = "play")
+
+str(cleaned)
+```
+
+## Play cutting function
+
+This discards any plays where the throw happens before frame 25 (i.e. 1.5 seconds after snap).
+
+```{r}
+cleaned <- cleaned %>%
+  cut_plays(
+    # get rid of plays with throw before this frame
+    throw_frame = 25,
+    # get rid of frames that happen after this many frames after pass released
+    time_after_event = 10
+    )
+```
+
+## Plot some sample plays
+
+```{r plots, warning = FALSE, message = FALSE, results = 'hide', fig.keep = 'all', dpi = 300}
+ex <- sample(cleaned$play, 4)
+
+plots <- map(ex, ~{
+  lab <- cleaned %>% filter(play == .x) %>% dplyr::pull(coverage)
+  plot <- cleaned %>%
+    filter(frame_id == 28, play == .x) %>%
+    plot_play(
+      animated = FALSE,
+      segment_length = 6,
+      segment_size = 3,
+      dot_size = 4
+      
+    )
+  
+  plot + 
+    labs(title = lab) +
+    theme(plot.title = element_blank(),
+          plot.caption = element_blank(),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")
+  )
+})
+
+plots[[1]] / plots[[2]] / plots[[3]] / plots[[4]] 
+```
+
+## The big cleaning function
+
+```{r}
+prepare_bdb_week(
+  week = 1,
+  dir = "../../nfl-big-data-bowl-2021/input",
+  trim_frame = 25,
+  frames_after_throw = 10,
+  keep_frames = c(30),
+  drop_positions = c("QB")
+) %>%
+  str()
+```
+
+
