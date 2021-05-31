@@ -22,11 +22,10 @@ n_features <- def_only_features + off_def_features
 # all frames will be in this range
 # cut play off here (frame_number - 10) frames after snap
 start_frame_number <- 0
-end_frame_number <- 45
+end_frame_number <- 60
 
 # frames to keep
-# note that later on frame_id will be re-coded to be 1, ... , F
-keep_frames <- seq(10, 44, by = 2)
+keep_frames <- seq(11, 57, by = 3)
 
 # pull week 1 through this week:
 final_week <- 17
@@ -59,23 +58,9 @@ rel_df
 object.size(df) %>% format("MB")
 object.size(rel_df) %>% format("MB")
 
-# using weeks 1 and 2 for testing so see how long this is
-# assumes data ordered with week 1 first
-test_length <- df %>% filter(week <= 2) %>% select(play) %>% unique() %>% nrow()
-
 # offense: 4-5 players
 # defense: 5-11 players
-
-# def x, y
-# def Sx, y
-# def o to qb
-# def distance from los
-# off x, y - def x, y
-# off Sx, y - def Sx, y
-
-# input shape (time steps (t) * n_features (10) * n_defenders (11) * n_non-qb-offense (5))
-# features 1-6 x, y, Sx, Sy, o_to_qb, dist_from_los, 
-# (7) off x - def x, (8) off y - def, (9) off Sx - def, (10) off Sy - def
+# input shape (time steps (t) * n_features (13) * n_defenders (11) * n_non-qb-offense (5))
 
 play_indices <- df %>%
   select(play, frame_id, play, week) %>%
@@ -136,10 +121,8 @@ torch_save(train_y, "data/train_y.pt")
 
 if (one_frame) {
 
-  message("saving one frame dataframe")
   # get rid of singleton time dimension
   train_x <- train_x %>% torch_squeeze()
-  
   torch_save(train_x, "data/train_x_one_frame.pt")
 
 } else {
