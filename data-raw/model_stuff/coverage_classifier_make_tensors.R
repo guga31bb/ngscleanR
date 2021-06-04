@@ -1,15 +1,10 @@
-# https://www.kaggle.com/jccampos/nfl-2020-winner-solution-the-zoo
-# 
+
+# need to run this if not installed
+# devtools::install_github("guga31bb/ngscleanR")
+
 library(tidyverse)
 library(torch)
-source("R/cleaning_functions.R")
-source("R/coverage_classifier_functions.R")
 set.seed(2013)
-
-# if you just want to keep one frame from each play
-# frame_number is (frame_number - 10) seconds into the play
-one_frame = FALSE
-frame_number <- 28
 
 # number of features that only depend on def player
 # dist_from_los, y, s_x, s_y, a_x, a_y, o_to_qb
@@ -19,22 +14,32 @@ def_only_features <- 7
 off_def_features <- 6
 n_features <- def_only_features + off_def_features
 
-# all frames will be in this range
-# cut play off here (frame_number - 10) frames after snap
-start_frame_number <- 0
-end_frame_number <- 60
-
-# frames to keep
-keep_frames <- seq(11, 57, by = 3)
-
 # pull week 1 through this week:
 final_week <- 17
 
 # get labels
-labels <- readRDS("data-raw/coverage_labels.rds")
+labels <- readRDS("data-raw/coverage_labels.rds") %>%
+  mutate(
+    play = paste0(game_id, "_", play_id)
+  ) %>%
+  filter(!is.na(coverage)) %>%
+  select(play, coverage)
 
 # get_bdb is a function in coverage_classifier_functions.R
-df <- map_df(1:final_week, get_bdb)
+df <- map_df(1:final_week, ~{
+  ngscleanR::prepare_bdb_week(
+    week = .x,
+    # where is your big data bowl data saved?
+    dir = "../nfl-big-data-bowl-2021/input",
+    # any throw that happens before 1.5 seconds after snap is thrown away
+    trim_frame = 25,
+    # all frames coming more than 1 second after pass released are thrown away
+    frames_after_throw = 10,
+    # let's keep these frames for fun (every 3 frames starting at snap for 16 frames)
+    keep_frames = seq(11, 57, by = 3)
+  )
+  }) %>%
+  left_join(labels, by = "play")
 
 df
 
@@ -84,17 +89,32 @@ plays <- n_distinct(df$play)
 plays
 n_frames
 
-# i, features, def, off, 
+# i, f, features, def, off,
 train_x = torch_empty(plays, n_frames, n_features, 11, 5)
 
-# for testing
-# row <- play_indices %>%
-#   dplyr::slice(1)
+fill_row <- function(df, row) {
 
-# test
-# fill_row(play_indices %>% dplyr::slice(1))
-# train_x[1, 1, , , ]
-# train_x[1, ..]
+  # indices for putting in tensor
+  i = row$i
+  f = row$f
+
+  # play info for extracting from df
+  playid = row$play
+  frameid = row$frame_id
+
+  play_df <- df %>%
+    filter(play == playid, frame_id == frameid) %>%
+    select(-play, -frame_id)
+
+  defenders <- n_distinct(play_df$nfl_id)
+  n_offense <- nrow(play_df) / defenders
+
+  play_df <- play_df %>% select(-nfl_id)
+
+  train_x[i, f, , 1:defenders, 1:n_offense] <-
+    torch_tensor(t(play_df))$view(c(-1, defenders, n_offense))
+
+}
 
 # future::plan("multicore")
 # build the tensor for train and test data
@@ -118,15 +138,7 @@ dim(train_x)
 dim(train_y)
 
 torch_save(train_y, "data/train_y.pt")
+torch_save(train_x, "data/train_x.pt")
 
-if (one_frame) {
-
-  # get rid of singleton time dimension
-  train_x <- train_x %>% torch_squeeze()
-  torch_save(train_x, "data/train_x_one_frame.pt")
-
-} else {
-  torch_save(train_x, "data/train_x.pt")
-}
 
 
