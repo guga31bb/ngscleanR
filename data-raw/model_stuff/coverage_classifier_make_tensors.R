@@ -25,7 +25,7 @@ labels <- readRDS("data-raw/coverage_labels.rds") %>%
   filter(!is.na(coverage)) %>%
   select(play, coverage)
 
-# get_bdb is a function in coverage_classifier_functions.R
+# make sure ngscleanR installed (see top)
 df <- map_df(1:final_week, ~{
   ngscleanR::prepare_bdb_week(
     week = .x,
