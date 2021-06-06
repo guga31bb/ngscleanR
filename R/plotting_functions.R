@@ -92,3 +92,37 @@ plot_play <- function(
   return(fig)
 
 }
+
+
+# helper function to not make every table have so many lines of code
+make_table <- function(df) {
+  df %>%
+    gt::gt() %>%
+    gt::tab_style(
+      style = gt::cell_text(color = "black", weight = "bold"),
+      locations = list(
+        gt::cells_column_labels(dplyr::everything())
+      )
+    ) %>%
+    tab_options(
+      row_group.border.top.width = px(3),
+      row_group.border.top.color = "black",
+      row_group.border.bottom.color = "black",
+      table_body.hlines.color = "white",
+      table.border.top.color = "black",
+      table.border.top.width = px(1),
+      table.border.bottom.color = "white",
+      table.border.bottom.width = px(1),
+      column_labels.border.bottom.color = "black",
+      column_labels.border.bottom.width = px(2),
+      row.striping.background_color = '#FFFFFF',
+      row.striping.include_table_body = TRUE,
+      table.background.color = '#F2F2F2',
+      data_row.padding = gt::px(2),
+      table.font.size = gt::px(16L)
+    ) %>%
+    return()
+}
+
+
+
