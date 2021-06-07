@@ -86,7 +86,7 @@ tracking_dataset_t <- dataset(
   },
 
   .getitem = function(i) {
-    list(self$data_x[i,], self$data_y[i], self$dims[i])
+    list("x" = self$data_x[i,], "y" = self$data_y[i], "t" = self$dims[i])
   },
 
   .length = function() {
