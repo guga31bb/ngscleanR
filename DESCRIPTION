@@ -1,6 +1,6 @@
 Package: ngscleanR
 Title: Helper Functions for Cleaning Player Tracking Data
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     person(given = "First",
            family = "Last",

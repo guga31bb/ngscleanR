@@ -239,12 +239,18 @@ rotate_to_ltr <- function(df) {
 
 
 
-# compute angle difference between x and y and
-# some prefix_x and prefix_y,
-# returning o_to_prefix
-
-# TODO: deal with multiple QB in one play
+#' Compute difference in orientation between direction currently facing and
+#' orientation if facing a player at a given x and y location
+#'
+#' @param df A dataframe containing x, y, o, prefix_x, and prefix_y
+#' @param prefix (default = "qb"). Locations prefix_x and prefix_y supplied in dataframe.
+#' @return Original dataframe with o_to_prefix added, which is the difference in orientation
+#' in degrees between the way the player is facing and where the "prefix" player is (0 is facing
+#' directly at the prefix player, 180 is directly away).
 #' @export
+#' @examples
+#' df <- tibble::tibble("x" = 20, "y" = 30, "o" = 270, "qb_x" = 10, "qb_y" = 25)
+#' compute_o_diff(df)
 compute_o_diff <- function(df, prefix = "qb") {
 
   name_x <- sym(paste0(prefix, "_x"))
@@ -283,6 +289,14 @@ compute_o_diff <- function(df, prefix = "qb") {
 }
 
 # restrict frame range by events
+#' Trim plays based on events
+#' @param df A dataframe
+#' @param end_events (default c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike", "tackle", "pass_shovel"))
+#' Events designated as play end events
+#' @param time_after_event Number of frames to keep after the event (default: 0). There are 10 frames in each second.
+#' @param throw_frame If the end event happens before this frame, remove this play from the df (default: 25, ie 1.5 seconds
+#' into the play). To not employ play dropping, provide throw_frame = NULL.
+#' @return The original df with trimmed frames (and if throw_frame provided, short plays removed).
 #' @export
 cut_plays <- function(df,
 
@@ -317,7 +331,7 @@ cut_plays <- function(df,
   }
 
   # if the play ends before throw_frame, throw out the play
-  # frame 25 is 1.5 seconds after snap
+  # frame 25 is 1.5 seconds into play
   if (!is.null(throw_frame)) {
 
     df <- df %>%
@@ -335,6 +349,17 @@ cut_plays <- function(df,
 
 
 
+#' Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season)
+#'
+#' @param week Get this week of data (1-17)
+#' @param dir Location of directory where BDB data lives. Default is unzipped to adjacent directory
+#' (default = "../nfl-big-data-bowl-2021/input")
+#' @param trim_frame If a throw, sack, etc happens before this frame, drop the play (default = 25)
+#' @param frames_after_throw If a frame happened more than this many frames after throw, drop the frame
+#' @param keep_frames Keep these frames. Default: NULL (ie keep all frames)
+#' @param drop_positions Drop these positions from the returned data (default = "QB")
+#' @details Loads raw .csvs from 2021 BDB, cleans, rotates, applies frame trimming, calculates orientation to QB,
+#' drops plays without at least 3 offensive and defensive players
 #' @export
 prepare_bdb_week <- function(
   week,

@@ -1,5 +1,18 @@
 
 
+#' Plot a play lol
+#'
+#' @param df_track A df of tracking data
+#' @param orientation Show lines representing where player is facing (default = T)
+#' @param dot_size Size of player dots (default = 6)
+#' @param segment_length Length of orientation segment lines (default = 2.5)
+#' @param segment_size Width of orientation segment lines (default = 1.5)
+#' @param numbers Show player jersey numbers (default = T)
+#' @param animated Whether play is animated or a still frame (default = T)
+#' @param animated_h If animated, height of animated image (default = 4)
+#' @param animated_w If animated, width of animated image (default = 8)
+#' @param animated_res If animated, resolution of animated image (default = 200)
+#' @param frame frame_id to plot (default = NULL, ie plot all provided frames).
 #' @export
 plot_play <- function(
   df_track,
