@@ -1,5 +1,5 @@
 # thank you
-# https://stackoverflow.com/questions/2470248/write-lines-of-text-to-a-file-in-r
+# https://stackoverflow.com/questions/58026637/no-visible-global-function-definition-for
 get_missing_global_variables <- function(wd = getwd()) {
 
   # Run devtools::check() and reprex the results
