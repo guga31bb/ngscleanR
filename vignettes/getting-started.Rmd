@@ -10,11 +10,14 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width=9, 
+  fig.height=5,
+  tidy = 'styler'
 )
 ```
 
-```{r setup}
+```{r setup, message=FALSE}
 library(ngscleanR)
 library(tidyverse)
 library(patchwork)
@@ -39,7 +42,6 @@ This will clean up the data, attach some information associated with the play, a
 ```{r}
 cleaned <- tracking %>%
   clean_and_rotate() %>%
-  # mutate(play = paste0(game_id, "_", play_id)) %>%
   inner_join(labs, by = "play")
 
 str(cleaned)
@@ -61,7 +63,7 @@ cleaned <- cleaned %>%
 
 ## Plot some sample plays
 
-```{r plots, warning = FALSE, message = FALSE, results = 'hide', fig.keep = 'all', dpi = 300}
+```{r plots, warning = FALSE, message = FALSE, results = 'hide', fig.keep = 'all', dpi = 400, layout="l-body-outset"}
 ex <- sample(cleaned$play, 4)
 
 plots <- map(ex, ~{
@@ -84,7 +86,7 @@ plots <- map(ex, ~{
   )
 })
 
-plots[[1]] / plots[[2]] / plots[[3]] / plots[[4]] 
+(plots[[1]] + plots[[2]]) / (plots[[3]] + plots[[4]])
 ```
 
 ## The big cleaning function

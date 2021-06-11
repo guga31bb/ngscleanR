@@ -18,14 +18,17 @@ Depends:
 Imports: 
     dplyr,
     gganimate,
+    ggplot2,
     glue,
     janitor,
     magrittr,
     readr,
+    rlang,
     tibble (>= 3.0),
     tidyr (>= 1.0.0),
     tidyselect (>= 1.1.0),
     usethis (>= 1.6.0)
 Suggests: 
-    knitr
+    knitr,
+    gt
 VignetteBuilder: knitr

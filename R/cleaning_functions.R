@@ -1,10 +1,70 @@
-
+#' Standardize direction and add play information
+#'
+#' @param df A dataframe of player tracking data obtained from a Big Data Bowl
+#' or NGS highlights
+#' @return The original data with the columns below appended. Note that all returned columns will have
+#' cleaned names (e.g. play_id rather than playId) to confront the tyranny of weird Big Data Bowl
+#' column names.
+#' \describe{
+#' \item{team_name}{Values of home team (eg "SEA"), away team (eg "GB"), or "football"}
+#' \item{defense}{Whether player is on defense (football has 0 here)}
+#' \item{play}{Unique play identifier in format "gameid_playid" with gameid old GSIS format}
+#' \item{nflfastr_game_id}{Game ID in nflfastR format}
+#' \item{week}{Week}
+#' \item{posteam}{Possession team}
+#' \item{home_team}{Home team}
+#' \item{away_team}{Away team}
+#' \item{down}{Down}
+#' \item{ydstogo}{Yards to go}
+#' \item{yardline_100}{Distance from opponent end zone}
+#' \item{qtr}{Quarter}
+#' \item{epa}{Expected Points Added gained on play}
+#' \item{yards_gained}{Yards gained on play}
+#' \item{air_yards}{Air yards (when applicable)}
+#' \item{desc}{Play description}
+#' \item{pass}{Was it a dropback?}
+#' \item{rush}{Was it a designed rush attempt?}
+#' \item{play_type_nfl}{Play type from NFL data}
+#' \item{team_color}{Primary team color}
+#' \item{team_color2}{Secondary team color}
+#' \item{team_logo_espn}{URL of team logo}
+#' \item{los_x}{x location of line of scrimmage}
+#' \item{dist_from_los}{Distance in x from line of scrimmage}
+#' \item{o_x}{Orientation in x direction}
+#' \item{o_y}{Orientation in y direction}
+#' \item{dir_x}{Direction in x direction}
+#' \item{dir_y}{Direction in y direction}
+#' \item{s_x}{Speed in x direction}
+#' \item{s_y}{Speed in y direction}
+#' \item{a_x}{Acceleration in x direction}
+#' \item{a_y}{Acceleration in y direction}
+#' }
 #' @export
 clean_and_rotate <- function(df) {
+
+  original_cols <- df %>%
+    janitor::clean_names() %>%
+    names()
+
+  added_cols <- c(
+    "team_name",
+    "defense",
+    "play",
+    "nflfastr_game_id",
+    "week",
+    "posteam",
+    "home_team",
+    "away_team",
+    "down", "ydstogo", "yardline_100", "qtr", "epa", "yards_gained",
+    "air_yards", "desc", "pass", "rush", "play_type_nfl",
+    "team_color", "team_color2", "team_logo_espn",
+    "los_x", "dist_from_los", "o_x", "o_y", "dir_x", "dir_y",
+    "s_x", "s_y", "a_x", "a_y"
+    )
   df %>%
     add_info() %>%
     rotate_to_ltr() %>%
-    return()
+    dplyr::select(tidyselect::any_of(c(original_cols, added_cols)))
 }
 
 # creates team_name, defense, and adds some play info from nflfastr
@@ -215,7 +275,8 @@ compute_o_diff <- function(df, prefix = "qb") {
 
       # angle to qb
       !!new_column := pmin(360 - diff, diff)
-    )
+    ) %>%
+    select(-diff, -tmp)
 
   return(df)
 
@@ -236,8 +297,8 @@ cut_plays <- function(df,
   if (!is.null(end_events)) {
 
     mins <- df %>%
-      arrange(game_id, play_id, frame_id) %>%
-      group_by(game_id, play_id) %>%
+      arrange(play, frame_id) %>%
+      group_by(play) %>%
       mutate(
         end_event = cumsum(event %in% end_events)
       ) %>%
@@ -246,10 +307,10 @@ cut_plays <- function(df,
       ungroup() %>%
       # if throw happens on frame 36 and user wants 5 frames, keep 36 - 40
       mutate(end_frame = frame_id + time_after_event - 1) %>%
-      select(game_id, play_id, end_frame)
+      select(play, end_frame)
 
     df <- df %>%
-      left_join(mins, by = c("game_id", "play_id")) %>%
+      left_join(mins, by = c("play")) %>%
       filter(frame_id <= end_frame)
 
 
@@ -260,8 +321,8 @@ cut_plays <- function(df,
   if (!is.null(throw_frame)) {
 
     df <- df %>%
-      arrange(game_id, play_id, frame_id) %>%
-      group_by(game_id, play_id) %>%
+      arrange(play, frame_id) %>%
+      group_by(play) %>%
       mutate(max_frame = max(frame_id)) %>%
       filter(max_frame >= throw_frame) %>%
       ungroup()
@@ -347,6 +408,7 @@ prepare_bdb_week <- function(
       s_y,
       a_x,
       a_y,
+      o,
       o_to_qb,
       los_x,
       dist_from_los
@@ -363,7 +425,8 @@ prepare_bdb_week <- function(
     ) %>%
     ungroup() %>%
     filter(
-      n_defenders > 2 & n_offense > 2
+      n_defenders > 2 & n_offense > 2,
+      n_defenders <= 11 & n_offense <= 11
     )
 
   if (!is.null(keep_frames)) {
