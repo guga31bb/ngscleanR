@@ -4,14 +4,15 @@
 
 library(tidyverse)
 library(torch)
+library(ngscleanR)
 set.seed(2013)
 
 # number of features that only depend on def player
 # dist_from_los, y, s_x, s_y, a_x, a_y, o_to_qb
 def_only_features <- 7
 # number of features that depend on defense and offense player
-# rel x, rel y, rel sx, rel sy, rel ax, rel ay
-off_def_features <- 6
+# rel x, rel y, rel sx, rel sy, rel ax, rel ay, rel o
+off_def_features <- 7
 n_features <- def_only_features + off_def_features
 
 # pull week 1 through this week:
@@ -36,10 +37,10 @@ df <- map_df(1:final_week, ~{
     # all frames coming more than 1 second after pass released are thrown away
     frames_after_throw = 10,
     # let's keep these frames for fun (every 3 frames starting at snap for 16 frames)
-    keep_frames = seq(11, 57, by = 3)
+    keep_frames = seq(11, 45, by = 3)
   )
   }) %>%
-  left_join(labels, by = "play")
+  inner_join(labels, by = "play")
 
 df
 
@@ -50,12 +51,14 @@ offense_df <- df %>%
 
 defense_df <- df %>%
   filter(defense == 1) %>%
-  select(play, frame_id, nfl_id, x, y, s_x, s_y, a_x, a_y, o_to_qb, dist_from_los)
+  select(play, frame_id, nfl_id, o, x, y, s_x, s_y, a_x, a_y, o_to_qb, dist_from_los)
 
 rel_df <- defense_df %>%
   left_join(offense_df, by = c("play", "frame_id")) %>%
   mutate(diff_x = o_x - x, diff_y = o_y - y, diff_s_x = o_s_x - s_x, diff_s_y = o_s_y - s_y, diff_a_x = o_a_x - a_x, diff_a_y = o_a_y - a_y) %>%
-  select(play, frame_id, nfl_id, dist_from_los, y, s_x, s_y, a_x, a_y, o_to_qb, starts_with("diff_"))
+  compute_o_diff("o") %>%
+  mutate(o_to_o = o_to_o / 180) %>%
+  select(play, frame_id, nfl_id, dist_from_los, y, s_x, s_y, a_x, a_y, o_to_qb, starts_with("diff_"), o_to_o)
 
 rel_df
 
@@ -65,10 +68,10 @@ object.size(rel_df) %>% format("MB")
 
 # offense: 4-5 players
 # defense: 5-11 players
-# input shape (time steps (t) * n_features (13) * n_defenders (11) * n_non-qb-offense (5))
+# input shape (time steps (t) * n_features (14) * n_defenders (11) * n_non-qb-offense (5))
 
 play_indices <- df %>%
-  select(play, frame_id, play, week) %>%
+  select(play, frame_id, play, week, coverage) %>%
   unique() %>%
   # get play index for 1 : n_plays
   mutate(
@@ -81,9 +84,6 @@ play_indices <- df %>%
 
 play_indices
 
-play_indices %>%
-  saveRDS("data/valid_plays.rds")
-
 n_frames <- n_distinct(play_indices$f)
 plays <- n_distinct(df$play)
 plays
@@ -92,7 +92,9 @@ n_frames
 # i, f, features, def, off,
 train_x = torch_empty(plays, n_frames, n_features, 11, 5)
 
-fill_row <- function(df, row) {
+# row <- play_indices %>% dplyr::slice(19684)
+
+fill_row <- function(row) {
 
   # indices for putting in tensor
   i = row$i
@@ -102,7 +104,7 @@ fill_row <- function(df, row) {
   playid = row$play
   frameid = row$frame_id
 
-  play_df <- df %>%
+  play_df <- rel_df %>%
     filter(play == playid, frame_id == frameid) %>%
     select(-play, -frame_id)
 
@@ -116,14 +118,15 @@ fill_row <- function(df, row) {
 
 }
 
-# future::plan("multicore")
 # build the tensor for train and test data
 walk(1 : nrow(play_indices), ~{
   if(.x %% 250 == 0) {
     message(glue::glue("{.x} of {nrow(play_indices)}"))
   }
-  fill_row(rel_df, play_indices %>% dplyr::slice(.x))
+  fill_row(play_indices %>% dplyr::slice(.x))
 })
+
+
 
 train_y <- torch_zeros(plays, dtype = torch_long())
 
@@ -137,8 +140,10 @@ train_y[1:plays] <- df %>%
 dim(train_x)
 dim(train_y)
 
-torch_save(train_y, "data/train_y.pt")
-torch_save(train_x, "data/train_x.pt")
+# save everything
+saveRDS(play_indices, "data-raw/model_stuff/data/valid_plays.rds")
+torch_save(train_y, "data-raw/model_stuff/data/train_y.pt")
+torch_save(train_x, "data-raw/model_stuff/data/train_x.pt")
 
 
 

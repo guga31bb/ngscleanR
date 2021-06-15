@@ -45,11 +45,6 @@ augment_data <- function(df, flip_indices, subtract_indices) {
 
   return(flipped)
 
-  # df[1, 2, ..]
-  # flipped[1, 2, ..]
-  #
-  # df[1, 4, ..]
-  # flipped[1, 4, ..]
 }
 
 
