@@ -36,7 +36,7 @@ df <- map_df(1:final_week, ~{
     trim_frame = 25,
     # all frames coming more than 1 second after pass released are thrown away
     frames_after_throw = 10,
-    # let's keep these frames for fun (every 3 frames starting at snap for 16 frames)
+    # let's keep these frames for fun (every 3 frames starting at snap for 12 frames)
     keep_frames = seq(11, 45, by = 3)
   )
   }) %>%
