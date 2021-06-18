@@ -24,6 +24,15 @@ parts of dealing with player tracking data. The included functions:
 -   **`plot_play()`**: A wrapper around `ggplot` and `gganimate` for
     plotting a play.
 
+## Installation
+
+Install from github using:
+
+``` r
+if (!require("remotes")) install.packages("remotes")
+remotes::install_github("guga31bb/ngscleanR")
+```
+
 ## Usage
 
 First we load the necessary packages (`patchwork` is for the plot at the
@@ -51,7 +60,7 @@ names(tracking)
 #> [17] "playId"        "playDirection" "route"
 ```
 
-## The main function
+### The main function
 
 This will clean up the data, attach some information associated with the
 play, and make everything face from left to right.
@@ -76,7 +85,7 @@ names(cleaned)
 #> [49] "s_y"              "a_x"              "a_y"
 ```
 
-## Play cutting function
+### Play cutting function
 
 This discards any plays where the throw happens before frame 25
 (i.e. 1.5 seconds into the play). In addition, it removes any frames
@@ -109,7 +118,7 @@ names(cleaned)
 #> [53] "max_frame"
 ```
 
-## Plot some sample plays
+### Plot some sample plays
 
 Here is a demonstration of the `plot_play` function on some still
 frames:
@@ -168,7 +177,7 @@ plot
 
 ![](README_files/figure-gfm/gif-1.gif)<!-- -->
 
-## The big cleaning function
+### The big cleaning function
 
 And the wrapper that can be used to prepare raw 2021 Big Data Bowl data.
 See [this Open Source Football

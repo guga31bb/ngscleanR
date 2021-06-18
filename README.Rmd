@@ -22,6 +22,16 @@ knitr::opts_chunk$set(
 * **`prepare_bdb_week()`**: A wrapper around the above three functions that cleans the raw data from the 2021 Big Data Bowl (2018 season).
 * **`plot_play()`**: A wrapper around `ggplot` and `gganimate` for plotting a play.
 
+## Installation
+
+Install from github using:
+
+```{r, eval = FALSE}
+if (!require("remotes")) install.packages("remotes")
+remotes::install_github("guga31bb/ngscleanR")
+```
+
+
 ## Usage
 
 First we load the necessary packages (`patchwork` is for the plot at the end).
@@ -41,7 +51,7 @@ tracking <- readRDS("data-raw/sample_bdb_2021.rds")
 names(tracking)
 ```
 
-## The main function
+### The main function
 
 This will clean up the data, attach some information associated with the play, and make everything face from left to right.
 
@@ -52,7 +62,7 @@ cleaned <- tracking %>%
 names(cleaned)
 ```
 
-## Play cutting function
+### Play cutting function
 
 This discards any plays where the throw happens before frame 25 (i.e. 1.5 seconds into the play). In addition, it removes any frames that took place more than 10 frames after a pass was thrown or some other play ending event (sack, fumble, etc).
 
@@ -68,7 +78,7 @@ cleaned <- cleaned %>%
 names(cleaned)
 ```
 
-## Plot some sample plays
+### Plot some sample plays
 
 Here is a demonstration of the `plot_play` function on some still frames:
 
@@ -122,7 +132,7 @@ plot <- cleaned %>%
 plot
 ```
 
-## The big cleaning function
+### The big cleaning function
 
 And the wrapper that can be used to prepare raw 2021 Big Data Bowl data. See [this Open Source Football post](https://www.opensourcefootball.com/posts/2021-05-31-computer-vision-in-r-using-torch/) for how it might be useful.
 
