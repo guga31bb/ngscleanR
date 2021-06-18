@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotting_functions.R
 \name{plot_play}
 \alias{plot_play}
-\title{Plot a play lol}
+\title{Plot a play}
 \usage{
 plot_play(
   df_track,
