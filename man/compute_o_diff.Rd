@@ -2,26 +2,27 @@
 % Please edit documentation in R/cleaning_functions.R
 \name{compute_o_diff}
 \alias{compute_o_diff}
-\title{Compute difference in orientation between direction currently facing and
-orientation if facing a player at a given x and y location}
+\title{Compute orientation difference}
 \usage{
 compute_o_diff(df, prefix = "qb")
 }
 \arguments{
-\item{df}{A dataframe containing x, y, o, prefix_x, and prefix_y}
+\item{df}{A dataframe containing x, y, o, "prefix"_x, and "prefix"_y}
 
-\item{prefix}{(default = "qb"). Locations prefix_x and prefix_y supplied in dataframe.}
+\item{prefix}{(default = "qb"). Columns prefix_x and prefix_y must be contained in \code{df}. These columns
+contain the x and y locations that will be used to calculate orientation difference.}
 }
 \value{
-Original dataframe with o_to_prefix added, which is the difference in orientation
+Original dataframe with o_to_"prefix" added, which is the difference in orientation
 in degrees between the way the player is facing and where the "prefix" player is (0 is facing
-directly at the prefix player, 180 is directly away).
+directly at the "prefix" player, 180 is directly away).
 }
 \description{
-Compute difference in orientation between direction currently facing and
-orientation if facing a player at a given x and y location
+Compute difference in orientation between direction player is currently facing and
+orientation if player were facing towards a given x and y location.
 }
 \examples{
 df <- tibble::tibble("x" = 20, "y" = 30, "o" = 270, "qb_x" = 10, "qb_y" = 25)
-compute_o_diff(df)
+df <- compute_o_diff(df)
+str(df)
 }

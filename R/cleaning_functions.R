@@ -1,43 +1,44 @@
 #' Standardize direction and add play information
 #'
+#' @description Standardize direction and add play information.
 #' @param df A dataframe of player tracking data obtained from a Big Data Bowl
 #' or NGS highlights
 #' @return The original data with the columns below appended. Note that all returned columns will have
-#' cleaned names (e.g. play_id rather than playId) to confront the tyranny of weird Big Data Bowl
+#' cleaned names, including the original columns in `df` (e.g. play_id rather than playId), to end the tyranny of weird Big Data Bowl
 #' column names.
 #' \describe{
 #' \item{team_name}{Values of home team (eg "SEA"), away team (eg "GB"), or "football"}
 #' \item{defense}{Whether player is on defense (football has 0 here)}
-#' \item{play}{Unique play identifier in format "gameid_playid" with gameid old GSIS format}
-#' \item{nflfastr_game_id}{Game ID in nflfastR format}
-#' \item{week}{Week}
+#' \item{play}{Unique play identifier in format "gameid_playid" with gameid old GSIS format. Ex: "2018091000_1101".}
+#' \item{nflfastr_game_id}{Game ID in nflfastR format. Ex: "2018_01_ATL_PHI"}
+#' \item{week}{Week of season}
 #' \item{posteam}{Possession team}
-#' \item{home_team}{Home team}
-#' \item{away_team}{Away team}
+#' \item{home_team}{Home team (e.g. "PHI")}
+#' \item{away_team}{Away team (e.g. "ATL")}
 #' \item{down}{Down}
 #' \item{ydstogo}{Yards to go}
 #' \item{yardline_100}{Distance from opponent end zone}
 #' \item{qtr}{Quarter}
-#' \item{epa}{Expected Points Added gained on play}
+#' \item{epa}{Expected Points Added gained on play from nflfastR}
 #' \item{yards_gained}{Yards gained on play}
 #' \item{air_yards}{Air yards (when applicable)}
 #' \item{desc}{Play description}
-#' \item{pass}{Was it a dropback?}
-#' \item{rush}{Was it a designed rush attempt?}
-#' \item{play_type_nfl}{Play type from NFL data}
-#' \item{team_color}{Primary team color}
-#' \item{team_color2}{Secondary team color}
+#' \item{pass}{Was it a dropback? From nflfastR}
+#' \item{rush}{Was it a designed rush attempt? From nflfastR}
+#' \item{play_type_nfl}{Play type from NFL data. E.g. "PASS", "PENALTY", "RUSH", "SACK", "PUNT", etc.}
+#' \item{team_color}{Primary team color. Useful for play animations}
+#' \item{team_color2}{Secondary team color. Useful for play animations}
 #' \item{team_logo_espn}{URL of team logo}
-#' \item{los_x}{x location of line of scrimmage}
-#' \item{dist_from_los}{Distance in x from line of scrimmage}
-#' \item{o_x}{Orientation in x direction}
-#' \item{o_y}{Orientation in y direction}
-#' \item{dir_x}{Direction in x direction}
-#' \item{dir_y}{Direction in y direction}
-#' \item{s_x}{Speed in x direction}
-#' \item{s_y}{Speed in y direction}
-#' \item{a_x}{Acceleration in x direction}
-#' \item{a_y}{Acceleration in y direction}
+#' \item{los_x}{x location of line of scrimmage (e.g. 20 means own 10 yard line)}
+#' \item{dist_from_los}{Distance of player from line of scirmmage in x direction}
+#' \item{o_x}{Orientation of player in x direction}
+#' \item{o_y}{Orientation of player in y direction}
+#' \item{dir_x}{Direction of player in x direction}
+#' \item{dir_y}{Direction of player in y direction}
+#' \item{s_x}{Speed of player in x direction}
+#' \item{s_y}{Speed of player in y direction}
+#' \item{a_x}{Acceleration of player in x direction}
+#' \item{a_y}{Acceleration of player in y direction}
 #' }
 #' @export
 clean_and_rotate <- function(df) {
@@ -239,18 +240,21 @@ rotate_to_ltr <- function(df) {
 
 
 
-#' Compute difference in orientation between direction currently facing and
-#' orientation if facing a player at a given x and y location
+#' Compute orientation difference
 #'
-#' @param df A dataframe containing x, y, o, prefix_x, and prefix_y
-#' @param prefix (default = "qb"). Locations prefix_x and prefix_y supplied in dataframe.
-#' @return Original dataframe with o_to_prefix added, which is the difference in orientation
+#' @description Compute difference in orientation between direction player is currently facing and
+#' orientation if player were facing towards a given x and y location.
+#' @param df A dataframe containing x, y, o, "prefix"_x, and "prefix"_y
+#' @param prefix (default = "qb"). Columns prefix_x and prefix_y must be contained in `df`. These columns
+#' contain the x and y locations that will be used to calculate orientation difference.
+#' @return Original dataframe with o_to_"prefix" added, which is the difference in orientation
 #' in degrees between the way the player is facing and where the "prefix" player is (0 is facing
-#' directly at the prefix player, 180 is directly away).
+#' directly at the "prefix" player, 180 is directly away).
 #' @export
 #' @examples
 #' df <- tibble::tibble("x" = 20, "y" = 30, "o" = 270, "qb_x" = 10, "qb_y" = 25)
-#' compute_o_diff(df)
+#' df <- compute_o_diff(df)
+#' str(df)
 compute_o_diff <- function(df, prefix = "qb") {
 
   name_x <- sym(paste0(prefix, "_x"))
@@ -288,15 +292,20 @@ compute_o_diff <- function(df, prefix = "qb") {
 
 }
 
-# restrict frame range by events
 #' Trim plays based on events
-#' @param df A dataframe
-#' @param end_events (default c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike", "tackle", "pass_shovel"))
-#' Events designated as play end events
-#' @param time_after_event Number of frames to keep after the event (default: 0). There are 10 frames in each second.
-#' @param throw_frame If the end event happens before this frame, remove this play from the df (default: 25, ie 1.5 seconds
-#' into the play). To not employ play dropping, provide throw_frame = NULL.
-#' @return The original df with trimmed frames (and if throw_frame provided, short plays removed).
+#'
+#' @description Trim frames for a play and/or remove plays based on how quickly provided events happen in the play.
+#' @param df A dataframe containing player tracking data with `event`, `frame_id`, and `play` with the latter uniquely identifying plays.
+#' @param end_events Events designated as play end events. Defaults are when a pass is thrown or QB's involvement ends in some
+#' other way (sack, strip sack, shovel pass, etc).
+#' @param time_after_event Number of frames to keep after the `end_events` (default: 0).
+#' Note that there are 10 frames in each second so providing 10 would keep one additional second after a pass was thrown
+#' when using the default end events.
+#' @param throw_frame If not NULL, for plays when one of the `end_events` happens before this frame,
+#' these plays will be removed from the returned df (default: 25, ie 1.5 seconds
+#' into the play). To not employ play dropping, provide throw_frame = NULL and all of the plays provided in original
+#' `df` will be returned.
+#' @return The original df with trimmed frames (and if throw_frame not NULL, the shorter plays removed).
 #' @export
 cut_plays <- function(df,
 
@@ -349,17 +358,20 @@ cut_plays <- function(df,
 
 
 
-#' Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season)
+#' Prepare a week of data from the 2021 Big Data Bowl
 #'
-#' @param week Get this week of data (1-17)
+#' @description Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season). To use this, you'll need to have
+#' the BDB data saved and unzipped somewhere in a directory on your computer.
+#' @param week Get and prepare this week of data (1-17)
 #' @param dir Location of directory where BDB data lives. Default is unzipped to adjacent directory
 #' (default = "../nfl-big-data-bowl-2021/input")
-#' @param trim_frame If a throw, sack, etc happens before this frame, drop the play (default = 25)
-#' @param frames_after_throw If a frame happened more than this many frames after throw, drop the frame
-#' @param keep_frames Keep these frames. Default: NULL (ie keep all frames)
-#' @param drop_positions Drop these positions from the returned data (default = "QB")
+#' @param trim_frame If a throw, sack, etc happens before this frame, drop the play (default = 25; i.e. before
+#' 1.5 seconds into the play).
+#' @param frames_after_throw If a frame happened more than this many frames after throw, drop the frame.
+#' @param keep_frames Keep these frames. Default: NULL (ie keep all frames).
+#' @param drop_positions Drop these positions from the returned data (default = "QB").
 #' @details Loads raw .csvs from 2021 BDB, cleans, rotates, applies frame trimming, calculates orientation to QB,
-#' drops plays without at least 3 offensive and defensive players
+#' drops plays without at least 3 offensive and defensive players.
 #' @export
 prepare_bdb_week <- function(
   week,

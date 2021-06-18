@@ -13,19 +13,23 @@ cut_plays(
 )
 }
 \arguments{
-\item{df}{A dataframe}
+\item{df}{A dataframe containing player tracking data with \code{event}, \code{frame_id}, and \code{play} with the latter uniquely identifying plays.}
 
-\item{end_events}{(default c("pass_forward", "qb_sack", "qb_strip_sack", "qb_spike", "tackle", "pass_shovel"))
-Events designated as play end events}
+\item{end_events}{Events designated as play end events. Defaults are when a pass is thrown or QB's involvement ends in some
+other way (sack, strip sack, shovel pass, etc).}
 
-\item{time_after_event}{Number of frames to keep after the event (default: 0). There are 10 frames in each second.}
+\item{time_after_event}{Number of frames to keep after the \code{end_events} (default: 0).
+Note that there are 10 frames in each second so providing 10 would keep one additional second after a pass was thrown
+when using the default end events.}
 
-\item{throw_frame}{If the end event happens before this frame, remove this play from the df (default: 25, ie 1.5 seconds
-into the play). To not employ play dropping, provide throw_frame = NULL.}
+\item{throw_frame}{If not NULL, for plays when one of the \code{end_events} happens before this frame,
+these plays will be removed from the returned df (default: 25, ie 1.5 seconds
+into the play). To not employ play dropping, provide throw_frame = NULL and all of the plays provided in original
+\code{df} will be returned.}
 }
 \value{
-The original df with trimmed frames (and if throw_frame provided, short plays removed).
+The original df with trimmed frames (and if throw_frame not NULL, the shorter plays removed).
 }
 \description{
-Trim plays based on events
+Trim frames for a play and/or remove plays based on how quickly provided events happen in the play.
 }

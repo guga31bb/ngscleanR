@@ -19,28 +19,28 @@ plot_play(
 )
 }
 \arguments{
-\item{df_track}{A df of tracking data}
+\item{df_track}{A df of tracking data from one play.}
 
-\item{orientation}{Show lines representing where player is facing (default = T)}
+\item{orientation}{Show lines representing where player is facing (default = T).}
 
-\item{dot_size}{Size of player dots (default = 6)}
+\item{dot_size}{Size of player dots (default = 6).}
 
-\item{segment_length}{Length of orientation segment lines (default = 2.5)}
+\item{segment_length}{Length of orientation segment lines (default = 2.5).}
 
-\item{segment_size}{Width of orientation segment lines (default = 1.5)}
+\item{segment_size}{Width of orientation segment lines (default = 1.5).}
 
-\item{numbers}{Show player jersey numbers (default = T)}
+\item{numbers}{Show player jersey numbers (default = T).}
 
-\item{animated}{Whether play is animated or a still frame (default = T)}
+\item{animated}{Whether play is animated, rather than a still frame (default = T).}
 
-\item{animated_h}{If animated, height of animated image (default = 4)}
+\item{animated_h}{If animated, height of animated image (default = 4).}
 
-\item{animated_w}{If animated, width of animated image (default = 8)}
+\item{animated_w}{If animated, width of animated image (default = 8).}
 
-\item{animated_res}{If animated, resolution of animated image (default = 200)}
+\item{animated_res}{If animated, resolution of animated image (default = 200).}
 
 \item{frame}{frame_id to plot (default = NULL, ie plot all provided frames).}
 }
 \description{
-Plot a play lol
+Plot or animate a play.
 }

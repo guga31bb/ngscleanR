@@ -1,0 +1,141 @@
+---
+title: "ngscleanR"
+output: github_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width=9, 
+  fig.height=5,
+  tidy = 'styler'
+)
+```
+
+`ngscleanR` is a set of functions to clean up and standardize NFL player tracking data. The package handles some of the necessary, but boring, parts of dealing with player tracking data. The included functions:
+
+* **`clean_and_rotate()`**: Makes all plays go from left to right, append some play information from `nflfastR` (yard line, play description, play type, etc), and add some post-standardized information about where the player is moving and facing (e.g., `s_x`, `s_y`, `o_x`, `o_y`, etc)
+* **`compute_o_diff()`**: Computes difference in orientation between direction player is currently facing and
+#' orientation if player were facing towards a given x and y location. For example, this could be used to determine the extent to which a player is facing towards the quarterback on a given frame.
+* **`cut_plays()`** Trim frames for a play and/or remove plays based on how quickly provided events happen in the play. For example, this could be used to remove frames after a pass was thrown or discard plays where a pass is thrown very quickly.
+* **`prepare_bdb_week()`**: A wrapper around the above three functions that cleans the raw data from the 2021 Big Data Bowl (2018 season).
+* **`plot_play()`**: A wrapper around `ggplot` and `gganimate` for plotting a play.
+
+## Usage
+
+First we load the necessary packages (`patchwork` is for the plot at the end).
+
+```{r setup, message=FALSE}
+library(ngscleanR)
+library(tidyverse)
+library(patchwork)
+```
+
+## Load sample week
+
+To demonstrate the package features, we start by loading some small sample data stored in the package github repo that come from 2021 Big Data Bowl:
+
+```{r}
+tracking <- readRDS("data-raw/sample_bdb_2021.rds")
+names(tracking)
+```
+
+## The main function
+
+This will clean up the data, attach some information associated with the play, and make everything face from left to right.
+
+```{r}
+cleaned <- tracking %>%
+  clean_and_rotate()
+
+names(cleaned)
+```
+
+## Play cutting function
+
+This discards any plays where the throw happens before frame 25 (i.e. 1.5 seconds into the play). In addition, it removes any frames that took place more than 10 frames after a pass was thrown or some other play ending event (sack, fumble, etc).
+
+```{r}
+cleaned <- cleaned %>%
+  cut_plays(
+    # get rid of plays with throw before this frame
+    throw_frame = 25,
+    # get rid of frames that happen after this many frames after pass released
+    time_after_event = 10
+    )
+
+names(cleaned)
+```
+
+## Plot some sample plays
+
+Here is a demonstration of the `plot_play` function on some still frames:
+
+```{r plots, warning = FALSE, message = FALSE, results = 'hide', fig.keep = 'all', dpi = 400, layout="l-body-outset"}
+ex <- sample(cleaned$play, 4)
+
+plots <- map(ex, ~{
+  plot <- cleaned %>%
+    filter(play == .x) %>%
+    plot_play(
+      # show still frame, not animation
+      animated = FALSE,
+      # just plot this frame_id
+      frame = 28,
+      segment_length = 6,
+      segment_size = 3,
+      dot_size = 4
+      
+    )
+  
+  plot + 
+    theme(plot.title = element_blank(),
+          plot.caption = element_blank(),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")
+  )
+})
+
+(plots[[1]] + plots[[2]]) / (plots[[3]] + plots[[4]])
+```
+
+Or we can animate a play:
+
+```{r gif, warning = FALSE, message = FALSE, fig.keep = 'all', dpi = 400, layout="l-body-outset"}
+ex <- sample(cleaned$play, 1)
+
+plot <- cleaned %>%
+  filter(play == ex) %>%
+  plot_play(
+    # show still frame, not animation
+    animated = TRUE,
+    # just plot this frame_id
+    segment_length = 6,
+    segment_size = 3,
+    dot_size = 4,
+    animated_h = 4,
+    animated_w = 8,
+    animated_res = 150
+  )
+
+
+plot
+```
+
+## The big cleaning function
+
+And the wrapper that can be used to prepare raw 2021 Big Data Bowl data. See [this Open Source Football post](https://www.opensourcefootball.com/posts/2021-05-31-computer-vision-in-r-using-torch/) for how it might be useful.
+
+```{r}
+prepare_bdb_week(
+  week = 1,
+  dir = "../nfl-big-data-bowl-2021/input",
+  trim_frame = 25,
+  frames_after_throw = 10,
+  keep_frames = c(30),
+  drop_positions = c("QB")
+) %>%
+  str()
+```
+
+

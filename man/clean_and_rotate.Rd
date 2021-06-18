@@ -12,43 +12,43 @@ or NGS highlights}
 }
 \value{
 The original data with the columns below appended. Note that all returned columns will have
-cleaned names (e.g. play_id rather than playId) to confront the tyranny of weird Big Data Bowl
+cleaned names, including the original columns in \code{df} (e.g. play_id rather than playId), to end the tyranny of weird Big Data Bowl
 column names.
 \describe{
 \item{team_name}{Values of home team (eg "SEA"), away team (eg "GB"), or "football"}
 \item{defense}{Whether player is on defense (football has 0 here)}
-\item{play}{Unique play identifier in format "gameid_playid" with gameid old GSIS format}
-\item{nflfastr_game_id}{Game ID in nflfastR format}
-\item{week}{Week}
+\item{play}{Unique play identifier in format "gameid_playid" with gameid old GSIS format. Ex: "2018091000_1101".}
+\item{nflfastr_game_id}{Game ID in nflfastR format. Ex: "2018_01_ATL_PHI"}
+\item{week}{Week of season}
 \item{posteam}{Possession team}
-\item{home_team}{Home team}
-\item{away_team}{Away team}
+\item{home_team}{Home team (e.g. "PHI")}
+\item{away_team}{Away team (e.g. "ATL")}
 \item{down}{Down}
 \item{ydstogo}{Yards to go}
 \item{yardline_100}{Distance from opponent end zone}
 \item{qtr}{Quarter}
-\item{epa}{Expected Points Added gained on play}
+\item{epa}{Expected Points Added gained on play from nflfastR}
 \item{yards_gained}{Yards gained on play}
 \item{air_yards}{Air yards (when applicable)}
 \item{desc}{Play description}
-\item{pass}{Was it a dropback?}
-\item{rush}{Was it a designed rush attempt?}
-\item{play_type_nfl}{Play type from NFL data}
-\item{team_color}{Primary team color}
-\item{team_color2}{Secondary team color}
+\item{pass}{Was it a dropback? From nflfastR}
+\item{rush}{Was it a designed rush attempt? From nflfastR}
+\item{play_type_nfl}{Play type from NFL data. E.g. "PASS", "PENALTY", "RUSH", "SACK", "PUNT", etc.}
+\item{team_color}{Primary team color. Useful for play animations}
+\item{team_color2}{Secondary team color. Useful for play animations}
 \item{team_logo_espn}{URL of team logo}
-\item{los_x}{x location of line of scrimmage}
-\item{dist_from_los}{Distance in x from line of scrimmage}
-\item{o_x}{Orientation in x direction}
-\item{o_y}{Orientation in y direction}
-\item{dir_x}{Direction in x direction}
-\item{dir_y}{Direction in y direction}
-\item{s_x}{Speed in x direction}
-\item{s_y}{Speed in y direction}
-\item{a_x}{Acceleration in x direction}
-\item{a_y}{Acceleration in y direction}
+\item{los_x}{x location of line of scrimmage (e.g. 20 means own 10 yard line)}
+\item{dist_from_los}{Distance of player from line of scirmmage in x direction}
+\item{o_x}{Orientation of player in x direction}
+\item{o_y}{Orientation of player in y direction}
+\item{dir_x}{Direction of player in x direction}
+\item{dir_y}{Direction of player in y direction}
+\item{s_x}{Speed of player in x direction}
+\item{s_y}{Speed of player in y direction}
+\item{a_x}{Acceleration of player in x direction}
+\item{a_y}{Acceleration of player in y direction}
 }
 }
 \description{
-Standardize direction and add play information
+Standardize direction and add play information.
 }

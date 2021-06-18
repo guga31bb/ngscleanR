@@ -2,7 +2,7 @@
 % Please edit documentation in R/cleaning_functions.R
 \name{prepare_bdb_week}
 \alias{prepare_bdb_week}
-\title{Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season)}
+\title{Prepare a week of data from the 2021 Big Data Bowl}
 \usage{
 prepare_bdb_week(
   week,
@@ -14,23 +14,25 @@ prepare_bdb_week(
 )
 }
 \arguments{
-\item{week}{Get this week of data (1-17)}
+\item{week}{Get and prepare this week of data (1-17)}
 
 \item{dir}{Location of directory where BDB data lives. Default is unzipped to adjacent directory
 (default = "../nfl-big-data-bowl-2021/input")}
 
-\item{trim_frame}{If a throw, sack, etc happens before this frame, drop the play (default = 25)}
+\item{trim_frame}{If a throw, sack, etc happens before this frame, drop the play (default = 25; i.e. before
+1.5 seconds into the play).}
 
-\item{frames_after_throw}{If a frame happened more than this many frames after throw, drop the frame}
+\item{frames_after_throw}{If a frame happened more than this many frames after throw, drop the frame.}
 
-\item{keep_frames}{Keep these frames. Default: NULL (ie keep all frames)}
+\item{keep_frames}{Keep these frames. Default: NULL (ie keep all frames).}
 
-\item{drop_positions}{Drop these positions from the returned data (default = "QB")}
+\item{drop_positions}{Drop these positions from the returned data (default = "QB").}
 }
 \description{
-Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season)
+Prepare a week of data from the 2021 Big Data Bowl (data from 2018 season). To use this, you'll need to have
+the BDB data saved and unzipped somewhere in a directory on your computer.
 }
 \details{
 Loads raw .csvs from 2021 BDB, cleans, rotates, applies frame trimming, calculates orientation to QB,
-drops plays without at least 3 offensive and defensive players
+drops plays without at least 3 offensive and defensive players.
 }
