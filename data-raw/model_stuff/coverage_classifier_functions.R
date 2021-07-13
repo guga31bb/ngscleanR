@@ -20,7 +20,11 @@
 # diff_a_x
 # diff_a_y
 
-augment_data <- function(df, flip_indices, subtract_indices) {
+augment_data <- function(df,
+                         # stuff that will be multiplied by -1 (eg Sy)
+                         flip_indices = c(4, 6, 9, 11, 13),
+                         # raw y location
+                         subtract_indices = c(2)) {
 
   # testing
   # df <- train_data
