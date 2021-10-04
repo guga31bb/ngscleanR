@@ -1,6 +1,6 @@
 Package: ngscleanR
 Title: Helper Functions for Cleaning Player Tracking Data
-Version: 0.0.0.9001
+Version: 0.0.0.9002
 Authors@R: 
     person(given = "First",
            family = "Last",
@@ -24,6 +24,7 @@ Imports:
     magrittr,
     readr,
     rlang,
+    sportyR,
     tibble (>= 3.0),
     tidyr (>= 1.0.0),
     tidyselect (>= 1.1.0),
